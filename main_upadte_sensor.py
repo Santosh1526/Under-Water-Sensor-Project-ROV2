@@ -42,32 +42,33 @@ def read_serial_data():
         messagebox.showerror("Serial Error", str(e))
 
 # -------------------- Update Sensor Data --------------------
-
 def update_display(line):
-    sensor_data_list.append(line)
-
     try:
-        # --- Handle $Params line ---
         if line.startswith("$Params"):
             parts = [x.strip() for x in line.split(',')]
-
-            # Expecting: $Params ,1274 ,28 ,1262 ,21 ,0.19 ,1
             if len(parts) >= 7:
-                ph_val = float(parts[1]) / 100   # Example conversion
+                ph_val = float(parts[1]) / 100
                 do_val = float(parts[2]) / 10
                 temp_val = float(parts[3]) / 50
                 pressure_val = float(parts[4]) / 1000
 
+                # Update labels
                 ph_label.config(text=f"🌊 pH: {ph_val:.2f}")
                 do_label.config(text=f"💧 DO: {do_val:.2f}")
                 temp_label.config(text=f"🔥 Temperature: {temp_val:.2f}°C")
                 pressure_label.config(text=f"🌡️ Pressure: {pressure_val:.2f} bar")
 
-                color = "cyan"
-            else:
-                color = "white"
+                # Save structured data for download
+                sensor_data_list.append({
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                    "pH": ph_val,
+                    "DO": do_val,
+                    "Temperature": temp_val,
+                    "Pressure": pressure_val
+                })
 
-        # --- Handle individual sensor lines (optional) ---
+                color = "cyan"
+
         elif line.startswith("$PH"):
             value = float(line.split(',')[1])
             ph_label.config(text=f"🌊 pH: {value:.2f}")
@@ -91,7 +92,7 @@ def update_display(line):
         else:
             color = "white"
 
-        # Show on GUI text box
+        # Display on GUI text box
         text_box.insert(tk.END, line + "\n", color)
         text_box.see(tk.END)
 
@@ -115,12 +116,32 @@ def connect_teensy():
         messagebox.showerror("Connection Error", str(e))
 
 # -------------------- Download Data --------------------
+# -------------------- Download Data --------------------
 def download_data():
+    global sensor_data_list, ph_label, do_label, temp_label, pressure_label
+
+    # 🧠 Step 1 — Capture current live readings from labels
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+    try:
+        current_data = {
+            "timestamp": current_time,
+            "pH": ph_label.cget("text").split(":")[1].strip() if ":" in ph_label.cget("text") else "--",
+            "DO": do_label.cget("text").split(":")[1].strip() if ":" in do_label.cget("text") else "--",
+            "Temperature": temp_label.cget("text").split(":")[1].replace("°C", "").strip() if ":" in temp_label.cget("text") else "--",
+            "Pressure": pressure_label.cget("text").split(":")[1].replace("bar", "").strip() if ":" in pressure_label.cget("text") else "--"
+        }
+
+        # 🧩 Step 2 — Append current reading to the data list (if new)
+        sensor_data_list.append(current_data)
+    except Exception as e:
+        print(f"⚠️ Error adding current reading: {e}")
+
+    # 🗂️ Step 3 — If no data available
     if not sensor_data_list:
         messagebox.showwarning("No Data", "⚠️ No sensor data available to download.")
         return
 
-    # Ask for filename
+    # 💾 Step 4 — Save as CSV
     file_path = filedialog.asksaveasfilename(
         defaultextension=".csv",
         filetypes=[("CSV Files", "*.csv")],
@@ -128,15 +149,14 @@ def download_data():
     )
 
     if file_path:
-        with open(file_path, 'w', newline='') as f:
-            writer = csv.writer(f)
-            # Write header
-            writer.writerow(["Timestamp", "pH", "DO", "Temperature (°C)", "Pressure (bar)"])
-            # Write each reading
-            for reading in sensor_data_list:
-                writer.writerow([reading["timestamp"], reading["pH"], reading["DO"],
-                                 reading["Temperature"], reading["Pressure"]])
-        messagebox.showinfo("Saved", f"💾 All sensor data saved to {file_path}")
+        try:
+            with open(file_path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=["timestamp", "pH", "DO", "Temperature", "Pressure"])
+                writer.writeheader()
+                writer.writerows(sensor_data_list)
+            messagebox.showinfo("Saved", f"💾 All sensor data (including current reading) saved to:\n{file_path}")
+        except Exception as e:
+            messagebox.showerror("Save Error", f"Error saving file:\n{e}")
 
 
 
@@ -256,7 +276,7 @@ def open_settings():
         except ValueError:
             messagebox.showerror("Invalid Date/Time", "Use format YYYY-MM-DD HH:MM:SS")
     tk.Button(settings_win, text="Set Custom Date & Time", command=set_custom_datetime,
-              font=("times", 12, "bold"), bg="#FF8C00", fg="white").place(x=200, y=300)
+              font=("times", 12, "bold"), bg="#FF8C00", fg="black").place(x=200, y=300)
 
 settings_button = tk.Button(root, text="⚙️ Settings", command=open_settings,
                             font=("times", 13, "bold"), bg="#0A0C0D", fg="black",
@@ -291,6 +311,7 @@ text_box.pack(side=tk.LEFT)
 scrollbar.config(command=text_box.yview)
 for color in ["blue", "green", "red", "goldenrod", "white"]:
     text_box.tag_config(color, foreground=color)
+
 
 # -------------------- Footer --------------------
 footer = tk.Label(root,
