@@ -5,7 +5,7 @@ import serial, threading, time, csv, serial.tools.list_ports
 from tkcalendar import Calendar  # pip install tkcalendar
 
 # -------------------- Find Teensy Port Automatically --------------------
-def find_teensy_port():
+def find_teensy_port(baudrate=57600):
     ports = serial.tools.list_ports.comports()
     for port in ports:
         if "Teensy" in port.description or "usbmodem" in port.device:
@@ -116,7 +116,6 @@ def connect_teensy():
         messagebox.showerror("Connection Error", str(e))
 
 # -------------------- Download Data --------------------
-# -------------------- Download Data --------------------
 def download_data():
     global sensor_data_list, ph_label, do_label, temp_label, pressure_label
 
@@ -167,7 +166,7 @@ root.geometry("950x700")
 root.resizable(False, False)
 
 # -------------------- Background --------------------
-bg_image = Image.open("/Users/santoshambule/Downloads/silas-baisch-K785Da4A_JA-unsplash.jpg").resize((950, 700))
+bg_image = Image.open("/Users/santoshambule/Downloads/fatmanur-simsek-J5i0KYw2uWA-unsplash.jpg").resize((1000, 900))
 enhancer = ImageEnhance.Brightness(bg_image)
 bg_image = enhancer.enhance(0.6)
 bg_photo = ImageTk.PhotoImage(bg_image)
@@ -200,9 +199,18 @@ def update_clock():
     root.after(1000, update_clock)
 update_clock()
 
-# -------------------- Glass Panel --------------------
-panel = tk.Frame(root, bg="#75BBD4", bd=0, highlightbackground="#84B5B5", highlightthickness=2)
+# -------------------- Glass Panel with Background Image --------------------
+panel = tk.Frame(root, bd=0, highlightbackground="#84B5B5", highlightthickness=2)
 panel.place(x=65, y=100, width=820, height=520)
+
+# Load and Resize Panel Background Image
+panel_bg = Image.open("/Users/santoshambule/Downloads/fatmanur-simsek-J5i0KYw2uWA-unsplash.jpg")
+panel_bg = panel_bg.resize((820, 520))
+panel_bg_photo = ImageTk.PhotoImage(panel_bg)
+
+# Place Image on Frame
+panel_bg_label = tk.Label(panel, image=panel_bg_photo)
+panel_bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
 # -------------------- Hover Animations --------------------
 def hover_in(e): e.widget.config(bg="#00BFFF")
