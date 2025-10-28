@@ -328,3 +328,6 @@ footer = tk.Label(root,
 footer.place(x=220, y=665)
 
 root.mainloop()
+
+
+                
